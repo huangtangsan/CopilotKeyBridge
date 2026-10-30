@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a CopilotKeyBridge installation or activation problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include private paths, certificate private keys, or sensitive logs.
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: Include edition, build, UBR, architecture, and display language.
+      placeholder: Windows 11 Pro 26100.XXXX, x64, zh-CN
+    validations:
+      required: true
+  - type: textarea
+    id: target
+    attributes:
+      label: Target application
+      description: Application type and whether it is tray-only, elevated, single-instance, or multi-process.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Include sanitized AppX Activity ID output and CopilotKeyBridge.log if relevant.

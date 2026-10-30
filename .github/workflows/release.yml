@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  source-release:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Verify tag and source version
+        shell: powershell
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $tag = $env:RELEASE_TAG
+          if ($tag -notmatch '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') {
+            throw "Invalid release tag: $tag"
+          }
+          $version = (Get-Content .\VERSION -Raw).Trim()
+          if ($tag -ne "v$version") {
+            throw "Tag $tag does not match VERSION $version"
+          }
+          $tagType = git cat-file -t $tag
+          if ($tagType -ne 'tag') {
+            throw 'Release tags must be annotated tags.'
+          }
+          git fetch origin main
+          git merge-base --is-ancestor "$tag^{}" origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The release tag is not on the main branch.'
+          }
+      - name: Run tests
+        shell: powershell
+        run: |
+          .\tests\Static.Tests.ps1
+          .\tests\PackageBuild.Tests.ps1
+      - name: Build source archive and checksums
+        shell: powershell
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          New-Item -ItemType Directory -Path artifacts | Out-Null
+          $tag = $env:RELEASE_TAG
+          $archive = "artifacts\CopilotKeyBridge-$tag.zip"
+          git archive --format=zip --prefix="CopilotKeyBridge-$tag/" -o $archive HEAD
+          $hash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  CopilotKeyBridge-$tag.zip" | Set-Content -LiteralPath "artifacts\CopilotKeyBridge-$tag.sha256" -Encoding ascii
+      - name: Publish GitHub release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          $tag = $env:RELEASE_TAG
+          $version = (Get-Content .\VERSION -Raw).Trim()
+          $prerelease = @()
+          if ($version -match '-') { $prerelease = @('--prerelease') }
+          gh release create $tag `
+            "artifacts\CopilotKeyBridge-$tag.zip" `
+            "artifacts\CopilotKeyBridge-$tag.sha256" `
+            --verify-tag `
+            --generate-notes `
+            --title "CopilotKeyBridge $tag" `
+            @prerelease

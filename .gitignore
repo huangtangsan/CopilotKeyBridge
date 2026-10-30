@@ -1,0 +1,10 @@
+.build/
+artifacts/
+*.msix
+*.appx
+*.pfx
+*.cer
+*.exe
+*.pdb
+*.log
+state.json
